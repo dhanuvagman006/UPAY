@@ -1,9 +1,14 @@
 package com.example.upay
 
+import android.Manifest
 import android.app.Application
 import android.content.Intent
+import android.content.pm.PackageManager
 import android.net.Uri
 import android.util.Log
+import android.widget.Toast
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -36,11 +41,11 @@ import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material.icons.filled.KeyboardArrowUp
 import androidx.compose.material.icons.filled.Mic
 import androidx.compose.material.icons.filled.Notifications
+import androidx.compose.material.icons.filled.Phone
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.Shield
 import androidx.compose.material.icons.filled.Brightness6
-// import androidx.compose.material.icons.filled.Article // Example for BlankScreen icon if needed later
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
@@ -77,6 +82,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.core.content.ContextCompat
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavHostController
 import androidx.navigation.compose.NavHost
@@ -310,6 +316,30 @@ fun SettingsScreen(
     var notificationsEnabled by remember { mutableStateOf(true) }
     val context = LocalContext.current
 
+    var callManagementEnabled by remember {
+        mutableStateOf(
+            ContextCompat.checkSelfPermission(
+                context,
+                Manifest.permission.ANSWER_PHONE_CALLS
+            ) == PackageManager.PERMISSION_GRANTED
+        )
+    }
+
+    val answerPhoneCallsPermissionLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.RequestPermission(),
+        onResult = { isGranted: Boolean ->
+            if (isGranted) {
+                callManagementEnabled = true
+                Log.d("SettingsScreen", "ANSWER_PHONE_CALLS permission granted.")
+                Toast.makeText(context, "Call management features enabled.", Toast.LENGTH_SHORT).show()
+            } else {
+                callManagementEnabled = false // Keep it false if denied
+                Log.w("SettingsScreen", "ANSWER_PHONE_CALLS permission denied.")
+                Toast.makeText(context, "Permission denied. Call management will not work.", Toast.LENGTH_LONG).show()
+            }
+        }
+    )
+
     LazyColumn(
         modifier = Modifier
             .fillMaxSize()
@@ -340,6 +370,35 @@ fun SettingsScreen(
                 title = "Dark Mode",
                 checked = darkModeEnabled, 
                 onCheckedChange = onDarkModeChange 
+            )
+            HorizontalDivider(modifier = Modifier.padding(vertical = 12.dp), color = TextSecondary.copy(alpha = 0.2f))
+        }
+
+        item {
+            SettingsGroupTitle("Call Features")
+            SettingsToggleItem(
+                icon = Icons.Default.Phone, // Icon for call features
+                title = "Enable Call Answering",
+                checked = callManagementEnabled,
+                onCheckedChange = { wantsToEnable ->
+                    if (wantsToEnable) {
+                        if (ContextCompat.checkSelfPermission(
+                                context,
+                                Manifest.permission.ANSWER_PHONE_CALLS
+                            ) == PackageManager.PERMISSION_GRANTED
+                        ) {
+                            callManagementEnabled = true // Already granted
+                            Toast.makeText(context, "Call management already enabled.", Toast.LENGTH_SHORT).show()
+                        } else {
+                            // Request permission
+                            answerPhoneCallsPermissionLauncher.launch(Manifest.permission.ANSWER_PHONE_CALLS)
+                        }
+                    } else {
+                        // User is disabling the feature in-app
+                        callManagementEnabled = false
+                        Toast.makeText(context, "Call management disabled.", Toast.LENGTH_SHORT).show()
+                    }
+                }
             )
             HorizontalDivider(modifier = Modifier.padding(vertical = 12.dp), color = TextSecondary.copy(alpha = 0.2f))
         }

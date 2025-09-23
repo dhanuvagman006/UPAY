@@ -13,7 +13,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 
 @Composable
-fun CallOverlayView(onForwardClick: () -> Unit, onReportClick: () -> Unit) {
+fun CallOverlayView(onAnswerClick: () -> Unit, onDeclineClick: () -> Unit) { // Updated parameters
     Box(
         modifier = Modifier
             .fillMaxWidth()
@@ -27,33 +27,33 @@ fun CallOverlayView(onForwardClick: () -> Unit, onReportClick: () -> Unit) {
             modifier = Modifier.padding(16.dp)
         ) {
             Text(
-                text = "Incoming Call Action",
+                text = "Incoming Call", // Updated title
                 style = MaterialTheme.typography.titleMedium,
-                modifier = Modifier.padding(bottom = 24.dp) // Increased bottom padding for title
+                modifier = Modifier.padding(bottom = 24.dp)
             )
             Row(
                 horizontalArrangement = Arrangement.SpaceEvenly,
                 modifier = Modifier.fillMaxWidth()
             ) {
                 Button(
-                    onClick = onForwardClick,
+                    onClick = onAnswerClick, // Updated onClick
                     colors = ButtonDefaults.buttonColors(
-                        containerColor = Color(0xFF4CAF50), // Green color
+                        containerColor = Color(0xFF4CAF50), // Green color for Answer
                         contentColor = Color.White
                     ),
-                    modifier = Modifier.weight(1f).padding(horizontal = 4.dp) // Added weight and padding
+                    modifier = Modifier.weight(1f).padding(horizontal = 4.dp)
                 ) {
-                    Text("Forward")
+                    Text("Answer") // Updated text
                 }
                 Button(
-                    onClick = onReportClick,
+                    onClick = onDeclineClick, // Updated onClick
                     colors = ButtonDefaults.buttonColors(
-                        containerColor = Color(0xFFF44336), // Red color
+                        containerColor = Color(0xFFF44336), // Red color for Decline
                         contentColor = Color.White
                     ),
-                    modifier = Modifier.weight(1f).padding(horizontal = 4.dp) // Added weight and padding
+                    modifier = Modifier.weight(1f).padding(horizontal = 4.dp)
                 ) {
-                    Text("Report")
+                    Text("Decline") // Updated text
                 }
             }
         }
