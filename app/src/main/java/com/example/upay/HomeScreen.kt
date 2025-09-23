@@ -1,5 +1,6 @@
 package com.example.upay
 
+import android.app.Application
 import android.content.Intent
 import android.net.Uri
 import android.util.Log
@@ -110,6 +111,7 @@ val bottomNavItems = listOf(
 @Composable
 fun MainAppScreen(darkModeEnabled: Boolean, onDarkModeChange: (Boolean) -> Unit) { // Added parameters
     val navController = rememberNavController()
+    val application = LocalContext.current.applicationContext as Application
 
     Scaffold(
         bottomBar = { BottomNavigationBar(navController = navController) }
@@ -126,7 +128,7 @@ fun MainAppScreen(darkModeEnabled: Boolean, onDarkModeChange: (Boolean) -> Unit)
                 SearchScreen()
             }
             composable(Screen.Mail.route) {
-                MailScreen(mailViewModel = viewModel())
+                MailScreen(mailViewModel = viewModel(factory = MailViewModelFactory(application)))
             }
             composable(Screen.Settings.route) {
                 SettingsScreen(
@@ -224,7 +226,7 @@ fun SearchScreen() {
 }
 
 @Composable
-fun MailScreen(mailViewModel: MailViewModel = viewModel()) {
+fun MailScreen(mailViewModel: MailViewModel) {
     val smsMessages by mailViewModel.smsMessages.collectAsState()
     Log.d("MailScreen", "Recomposing MailScreen. ViewModel: $mailViewModel, SMS Count: ${smsMessages.size}")
 
@@ -237,11 +239,11 @@ fun MailScreen(mailViewModel: MailViewModel = viewModel()) {
         Text("SMS Messages", style = MaterialTheme.typography.headlineMedium.copy(color = TextPrimary), modifier = Modifier.padding(bottom = 16.dp))
         if (smsMessages.isEmpty()) {
             Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                 Text("No messages yet.", style = MaterialTheme.typography.bodyLarge.copy(color = TextSecondary))
+                 Text("No messages yet or permission denied.", style = MaterialTheme.typography.bodyLarge.copy(color = TextSecondary))
             }
         } else {
             LazyColumn(modifier = Modifier.fillMaxSize()) {
-                items(smsMessages) { sms ->
+                items(smsMessages) { sms -> 
                     SmsListItem(smsMessage = sms)
                     Spacer(modifier = Modifier.height(8.dp))
                 }
@@ -252,10 +254,14 @@ fun MailScreen(mailViewModel: MailViewModel = viewModel()) {
 
 @Composable
 fun SmsListItem(smsMessage: SmsMessageData) {
+    val showRedDot = !(smsMessage.sender.contains("-S", ignoreCase = true) || 
+                       smsMessage.sender.contains("-P", ignoreCase = true) || 
+                       smsMessage.sender.contains("-G", ignoreCase = true))
+
     Card(
         modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(12.dp), // Slightly more rounded
-        elevation = CardDefaults.cardElevation(4.dp), // A bit more shadow
+        shape = RoundedCornerShape(12.dp),
+        elevation = CardDefaults.cardElevation(4.dp),
         colors = CardDefaults.cardColors(containerColor = Color.White)
     ) {
         Column(modifier = Modifier.padding(16.dp)) {
@@ -271,12 +277,25 @@ fun SmsListItem(smsMessage: SmsMessageData) {
                 style = MaterialTheme.typography.bodyMedium,
                 color = TextSecondary
             )
-            Spacer(modifier = Modifier.height(8.dp)) // Increased spacing
-            Text(
-                text = "Received: ${java.text.SimpleDateFormat("dd/MM/yy HH:mm", java.util.Locale.getDefault()).format(java.util.Date(smsMessage.timestamp))}",
-                style = MaterialTheme.typography.bodySmall,
-                color = TextSecondary.copy(alpha = 0.7f) // Lighter for less emphasis
-            )
+            Spacer(modifier = Modifier.height(8.dp))
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.SpaceBetween
+            ) {
+                Text(
+                    text = "Received: ${java.text.SimpleDateFormat("dd/MM/yy HH:mm", java.util.Locale.getDefault()).format(java.util.Date(smsMessage.timestamp))}",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = TextSecondary.copy(alpha = 0.7f)
+                )
+                if (showRedDot) {
+                    Box(
+                        modifier = Modifier
+                            .size(10.dp)
+                            .background(Color.Red, CircleShape)
+                    )
+                }
+            }
         }
     }
 }
