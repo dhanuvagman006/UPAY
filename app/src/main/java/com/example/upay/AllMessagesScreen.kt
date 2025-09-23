@@ -1,8 +1,10 @@
 package com.example.upay
 
+import android.annotation.SuppressLint
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -22,45 +24,20 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import com.example.upay.ui.theme.UPAYTheme
-//  You'll need a ViewModel and data class for messages later
-// import kotlinx.coroutines.flow.StateFlow
-// import kotlinx.coroutines.flow.flowOf
+import androidx.lifecycle.viewmodel.compose.viewModel
+import kotlinx.coroutines.flow.MutableStateFlow
 
-// Placeholder data class for an SMS message
-data class SmsMessage(
-    val id: Long,
-    val sender: String,
-    val body: String,
-    val timestamp: Long
-)
-
-// Placeholder ViewModel - In a real app, this would interact with a repository/database
-// class AllMessagesViewModel {
-//     // Placeholder for messages - replace with actual data source
-//     val messages: StateFlow<List<SmsMessage>> = flowOf(
-//         listOf(
-//             SmsMessage(1, "Sender A", "Hello! This is a test message.", System.currentTimeMillis()),
-//             SmsMessage(2, "Bank XYZ", "Your OTP is 123456.", System.currentTimeMillis() - 100000),
-//             SmsMessage(3, "Friend B", "Are you free later?", System.currentTimeMillis() - 200000)
-//         )
-//     )
-// }
+// SmsMessageData from MailViewModel.kt is used
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun AllMessagesScreen(/*viewModel: AllMessagesViewModel = androidx.lifecycle.viewmodel.compose.viewModel()*/) {
-    // val messages by viewModel.messages.collectAsState()
-    // Using placeholder data directly for now, until ViewModel and data persistence are set up
-    val placeholderMessages = listOf(
-        SmsMessage(1, "Sender A", "Hello! This is a test message.", System.currentTimeMillis()),
-        SmsMessage(2, "Bank XYZ", "Your OTP is 123456.", System.currentTimeMillis() - 100000),
-        SmsMessage(3, "Friend B", "Are you free later? This is a slightly longer message to see how it wraps and displays within the card element that we are using for each message item.", System.currentTimeMillis() - 200000)
-    )
+fun AllMessagesScreen(viewModel: MailViewModel = viewModel()) {
+    val messages by viewModel.smsMessages.collectAsState()
 
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("All Messages") },
+                title = { Text("All Messages") }, // Title reverted
                 colors = TopAppBarDefaults.topAppBarColors(
                     containerColor = MaterialTheme.colorScheme.primaryContainer,
                     titleContentColor = MaterialTheme.colorScheme.onPrimaryContainer
@@ -69,18 +46,22 @@ fun AllMessagesScreen(/*viewModel: AllMessagesViewModel = androidx.lifecycle.vie
         },
         modifier = Modifier.fillMaxSize()
     ) { innerPadding ->
-        if (placeholderMessages.isEmpty()) {
+        if (messages.isEmpty()) {
             Column(
                 modifier = Modifier
                     .fillMaxSize()
                     .padding(innerPadding)
                     .padding(16.dp),
-                verticalArrangement = Arrangement.Center,
-                horizontalAlignment = Alignment.CenterHorizontally
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.Center
             ) {
                 Text(
                     text = "No messages yet.",
-                    style = MaterialTheme.typography.bodyLarge
+                    style = MaterialTheme.typography.headlineSmall
+                )
+                Text(
+                    text = "Send an SMS to this device or check your ViewModel data.", // Updated empty text
+                    style = MaterialTheme.typography.bodyMedium
                 )
             }
         } else {
@@ -91,7 +72,7 @@ fun AllMessagesScreen(/*viewModel: AllMessagesViewModel = androidx.lifecycle.vie
                     .padding(horizontal = 8.dp, vertical = 8.dp),
                 verticalArrangement = Arrangement.spacedBy(8.dp)
             ) {
-                items(placeholderMessages) { message ->
+                items(messages.reversed()) { message -> // Display latest messages first
                     MessageItem(message = message)
                 }
             }
@@ -100,7 +81,7 @@ fun AllMessagesScreen(/*viewModel: AllMessagesViewModel = androidx.lifecycle.vie
 }
 
 @Composable
-fun MessageItem(message: SmsMessage) {
+fun MessageItem(message: SmsMessageData) {
     Card(
         modifier = Modifier.fillMaxWidth(),
         elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
@@ -117,7 +98,7 @@ fun MessageItem(message: SmsMessage) {
                 modifier = Modifier.padding(bottom = 4.dp)
             )
             Text(
-                text = java.text.SimpleDateFormat("dd/MM/yyyy HH:mm", java.util.Locale.getDefault()).format(java.util.Date(message.timestamp)),
+                text = java.text.SimpleDateFormat("dd/MM/yyyy HH:mm:ss", java.util.Locale.getDefault()).format(java.util.Date(message.timestamp)),
                 style = MaterialTheme.typography.labelSmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
@@ -125,21 +106,43 @@ fun MessageItem(message: SmsMessage) {
     }
 }
 
-@Preview(showBackground = true, name = "All Messages Screen Preview")
-@Composable
-fun AllMessagesScreenPreview() {
-    UPAYTheme {
-        AllMessagesScreen()
+// Helper ViewModel for Previews
+class PreviewMailViewModel(initialMessages: List<SmsMessageData>) : MailViewModel() {
+    init {
+        val privateSmsMessagesField = MailViewModel::class.java.getDeclaredField("_smsMessages")
+        privateSmsMessagesField.isAccessible = true
+        @Suppress("UNCHECKED_CAST")
+        val mutableStateFlow = privateSmsMessagesField.get(this) as MutableStateFlow<List<SmsMessageData>>
+        mutableStateFlow.value = initialMessages
     }
 }
 
+@SuppressLint("ViewModelConstructorInComposable") // Added annotation here
+@Preview(showBackground = true, name = "All Messages Screen Preview")
+@Composable
+fun AllMessagesScreenPreview() {
+    val previewMessages = listOf(
+        SmsMessageData("Sender A", "Hello! This is a test message.", System.currentTimeMillis() - 200000),
+        SmsMessageData("Bank XYZ", "Your OTP is 123456.", System.currentTimeMillis() - 100000),
+        SmsMessageData("Friend B", "Are you free later? This is a slightly longer message to see how it wraps and displays within the card element.", System.currentTimeMillis()),
+        SmsMessageData("Service XYZ", "Your appointment is confirmed for tomorrow at 10 AM.", System.currentTimeMillis() - 300000),
+        SmsMessageData("Mom", "Can you pick up groceries on your way home?", System.currentTimeMillis() - 400000),
+        SmsMessageData("Boss", "Meeting rescheduled to 2 PM.", System.currentTimeMillis() - 500000),
+        SmsMessageData("Online Store", "Your package has been shipped!", System.currentTimeMillis() - 600000),
+        SmsMessageData("Newsletter", "Check out our latest offers.", System.currentTimeMillis() - 700000),
+        SmsMessageData("Unknown", "This is a spam message. Please ignore.", System.currentTimeMillis() - 800000),
+        SmsMessageData("Another Friend", "Long time no see! How are you doing?", System.currentTimeMillis() - 900000)
+    )
+    UPAYTheme {
+        AllMessagesScreen(viewModel = PreviewMailViewModel(previewMessages))
+    }
+}
+
+@SuppressLint("ViewModelConstructorInComposable")
 @Preview(showBackground = true, name = "All Messages Screen Empty Preview")
 @Composable
 fun AllMessagesScreenEmptyPreview() {
     UPAYTheme {
-        // To preview the empty state, we'd ideally pass an empty list
-        // For now, the placeholder data is hardcoded, so this preview will show the same
-        // as the one above until ViewModel and real data flow is implemented.
-        AllMessagesScreen()
+        AllMessagesScreen(viewModel = PreviewMailViewModel(emptyList()))
     }
 }
