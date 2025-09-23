@@ -8,9 +8,11 @@
         android:name="android.hardware.telephony"
         android:required="false" />
 
-    <uses-permission android:name="android.permission.RECEIVE_SMS" />
+    <uses-permission android:name="android.permission.RECEIVE_SMS"
+        tools:ignore="SmsAndCallLogPolicy" />
     <uses-permission android:name="android.permission.READ_PHONE_STATE" />
-    <uses-permission android:name="android.permission.READ_SMS" />
+    <uses-permission android:name="android.permission.READ_SMS"
+        tools:ignore="SmsAndCallLogPolicy" />
     <uses-permission android:name="android.permission.SYSTEM_ALERT_WINDOW" />
 
     <application
