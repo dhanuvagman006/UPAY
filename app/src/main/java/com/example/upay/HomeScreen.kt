@@ -60,6 +60,8 @@ import androidx.compose.runtime.setValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.ContentScale
@@ -75,7 +77,14 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 
 
-
+// Enhanced Color Palette
+val PrimaryVariant = Color(0xFF004BA0) // A deeper blue
+val SurfaceLight = Color(0xFFF8F9FA) // A very light gray for backgrounds
+val TextPrimary = Color(0xFF212121) // Dark gray for primary text
+val TextSecondary = Color(0xFF757575) // Medium gray for secondary text
+val AccentColor = Color(0xFFFFD700) // A gold-like accent
+val IncomeGreen = Color(0xFF4CAF50)
+val ExpenseDark = TextPrimary
 
 sealed class Screen(val route: String, val label: String, val icon: ImageVector) {
     object Home : Screen("home", "Home", Icons.Default.Home)
@@ -113,7 +122,6 @@ fun MainAppScreen(darkModeEnabled: Boolean, onDarkModeChange: (Boolean) -> Unit)
                 MailScreen(mailViewModel = viewModel())
             }
             composable(Screen.Settings.route) {
-                // Pass dark mode state and updater to SettingsScreen
                 SettingsScreen(
                     navController = navController,
                     darkModeEnabled = darkModeEnabled,
@@ -128,35 +136,37 @@ fun MainAppScreen(darkModeEnabled: Boolean, onDarkModeChange: (Boolean) -> Unit)
 @Composable
 fun SearchScreen() {
     var inputText by remember { mutableStateOf("") }
-    var isFakeNewsResult by remember { mutableStateOf<Boolean?>(null) } // null: not checked, true: fake, false: not fake
+    var isFakeNewsResult by remember { mutableStateOf<Boolean?>(null) }
     var resultText by remember { mutableStateOf("") }
     var resultColor by remember { mutableStateOf(Color.Black) }
 
     Column(
         modifier = Modifier
             .fillMaxSize()
+            .background(SurfaceLight)
             .padding(16.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Top
     ) {
         Text(
             "Verify Message",
-            style = MaterialTheme.typography.headlineMedium,
-            modifier = Modifier.padding(bottom = 16.dp)
+            style = MaterialTheme.typography.headlineMedium.copy(color = TextPrimary),
+            modifier = Modifier.padding(bottom = 24.dp)
         )
 
         OutlinedTextField(
             value = inputText,
             onValueChange = {
                 inputText = it
-                isFakeNewsResult = null // Reset result when text changes
+                isFakeNewsResult = null 
                 resultText = ""
             },
-            label = { Text("Paste message here") },
+            label = { Text("Paste message here", color = TextSecondary) },
             modifier = Modifier
                 .fillMaxWidth()
                 .height(150.dp),
-            maxLines = 5
+            maxLines = 5,
+            textStyle = TextStyle(color = TextPrimary)
         )
 
         Spacer(modifier = Modifier.height(16.dp))
@@ -165,13 +175,11 @@ fun SearchScreen() {
             onClick = {
                 if (inputText.isBlank()) {
                     resultText = "Please enter a message to verify."
-                    resultColor = Color.DarkGray
+                    resultColor = TextSecondary
                     isFakeNewsResult = null
                     return@Button
                 }
-                // TODO: Replace with actual Gemini API call
                 Log.d("SearchScreen", "Verifying message: $inputText")
-                // Simulate API response based on keywords
                 val isLikelyFake = inputText.contains("lottery", ignoreCase = true) ||
                                  inputText.contains("urgent prize", ignoreCase = true) ||
                                  inputText.contains("free money", ignoreCase = true)
@@ -183,13 +191,14 @@ fun SearchScreen() {
                     resultColor = Color.Red
                 } else {
                     resultText = "This message seems legitimate."
-                    resultColor = Color.Green
+                    resultColor = IncomeGreen
                 }
                 Log.d("SearchScreen", "Verification result: $resultText")
             },
-            modifier = Modifier.fillMaxWidth()
+            modifier = Modifier.fillMaxWidth(),
+            colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary)
         ) {
-            Text("Verify with Gemini")
+            Text("Verify with Gemini", color = Color.White)
         }
 
         Spacer(modifier = Modifier.height(24.dp))
@@ -208,31 +217,21 @@ fun SearchScreen() {
 fun MailScreen(mailViewModel: MailViewModel = viewModel()) {
     val smsMessages by mailViewModel.smsMessages.collectAsState()
     Log.d("MailScreen", "Recomposing MailScreen. ViewModel: $mailViewModel, SMS Count: ${smsMessages.size}")
-    if (smsMessages.isNotEmpty()) {
-        Log.d("MailScreen", "First message sender: ${smsMessages.first().sender}, body: '${smsMessages.first().body}'")
-        smsMessages.forEachIndexed { index, sms ->
-            Log.d("MailScreen", "Message at index $index: '${sms.body}' from ${sms.sender}")
-        }
-    } else {
-        Log.d("MailScreen", "smsMessages list is empty.")
-    }
 
     Column(
         modifier = Modifier
             .fillMaxSize()
+            .background(SurfaceLight)
             .padding(16.dp)
     ) {
-        Text("Mail Screen - SMS Messages", style = MaterialTheme.typography.headlineMedium, modifier = Modifier.padding(bottom = 16.dp))
+        Text("SMS Messages", style = MaterialTheme.typography.headlineMedium.copy(color = TextPrimary), modifier = Modifier.padding(bottom = 16.dp))
         if (smsMessages.isEmpty()) {
-            Log.d("MailScreen", "Displaying 'No messages yet.' because smsMessages is empty.")
             Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                 Text("No messages yet.", style = MaterialTheme.typography.bodyLarge)
+                 Text("No messages yet.", style = MaterialTheme.typography.bodyLarge.copy(color = TextSecondary))
             }
         } else {
-            Log.d("MailScreen", "Displaying LazyColumn for ${smsMessages.size} messages.")
             LazyColumn(modifier = Modifier.fillMaxSize()) {
                 items(smsMessages) { sms ->
-                    Log.d("MailScreen_LazyColumn", "Rendering item for sender: ${sms.sender}, body: '${sms.body}'")
                     SmsListItem(smsMessage = sms)
                     Spacer(modifier = Modifier.height(8.dp))
                 }
@@ -245,25 +244,28 @@ fun MailScreen(mailViewModel: MailViewModel = viewModel()) {
 fun SmsListItem(smsMessage: SmsMessageData) {
     Card(
         modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(8.dp),
-        elevation = CardDefaults.cardElevation(2.dp)
+        shape = RoundedCornerShape(12.dp), // Slightly more rounded
+        elevation = CardDefaults.cardElevation(4.dp), // A bit more shadow
+        colors = CardDefaults.cardColors(containerColor = Color.White)
     ) {
         Column(modifier = Modifier.padding(16.dp)) {
             Text(
                 text = "From: ${smsMessage.sender}",
                 style = MaterialTheme.typography.titleMedium,
-                fontWeight = FontWeight.Bold
+                fontWeight = FontWeight.Bold,
+                color = TextPrimary
             )
             Spacer(modifier = Modifier.height(4.dp))
             Text(
                 text = smsMessage.body,
-                style = MaterialTheme.typography.bodyMedium
+                style = MaterialTheme.typography.bodyMedium,
+                color = TextSecondary
             )
-            Spacer(modifier = Modifier.height(4.dp))
+            Spacer(modifier = Modifier.height(8.dp)) // Increased spacing
             Text(
                 text = "Received: ${java.text.SimpleDateFormat("dd/MM/yy HH:mm", java.util.Locale.getDefault()).format(java.util.Date(smsMessage.timestamp))}",
                 style = MaterialTheme.typography.bodySmall,
-                color = Color.Gray
+                color = TextSecondary.copy(alpha = 0.7f) // Lighter for less emphasis
             )
         }
     }
@@ -273,30 +275,28 @@ fun SmsListItem(smsMessage: SmsMessageData) {
 @Composable
 fun SettingsScreen(
     navController: NavHostController,
-    darkModeEnabled: Boolean, // Added parameter
-    onDarkModeChange: (Boolean) -> Unit // Added parameter
+    darkModeEnabled: Boolean, 
+    onDarkModeChange: (Boolean) -> Unit
 ) {
     var notificationsEnabled by remember { mutableStateOf(true) }
-    // No longer need local darkModeEnabled state, use the passed one
 
     LazyColumn(
         modifier = Modifier
             .fillMaxSize()
+            .background(SurfaceLight)
             .padding(16.dp)
     ) {
         item {
-            Text("Settings", style = MaterialTheme.typography.headlineMedium, modifier = Modifier.padding(bottom = 16.dp))
+            Text("Settings", style = MaterialTheme.typography.headlineMedium.copy(color = TextPrimary), modifier = Modifier.padding(bottom = 24.dp))
         }
 
-        // Account Section
         item {
             SettingsGroupTitle("Account")
-            SettingsItem(icon = Icons.Default.AccountCircle, title = "Profile", onClick = { /* TODO: Navigate to Profile Screen */ })
-            SettingsItem(icon = Icons.Default.Shield, title = "Security", onClick = { /* TODO: Navigate to Security Screen */ })
-            HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
+            SettingsItem(icon = Icons.Default.AccountCircle, title = "Profile", onClick = { /* TODO */ })
+            SettingsItem(icon = Icons.Default.Shield, title = "Security", onClick = { /* TODO */ })
+            HorizontalDivider(modifier = Modifier.padding(vertical = 12.dp), color = TextSecondary.copy(alpha = 0.2f))
         }
 
-        // General Settings Section
         item {
             SettingsGroupTitle("General")
             SettingsToggleItem(
@@ -308,26 +308,26 @@ fun SettingsScreen(
             SettingsToggleItem(
                 icon = Icons.Default.Brightness6,
                 title = "Dark Mode",
-                checked = darkModeEnabled, // Use passed state
-                onCheckedChange = onDarkModeChange // Use passed updater
+                checked = darkModeEnabled, 
+                onCheckedChange = onDarkModeChange 
             )
-            HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
+            HorizontalDivider(modifier = Modifier.padding(vertical = 12.dp), color = TextSecondary.copy(alpha = 0.2f))
         }
-
-        // Logout
+        
         item {
             Spacer(modifier = Modifier.height(16.dp))
             Button(
                 onClick = {
                     Log.d("SettingsScreen", "Logout clicked")
-                    // TODO: Implement logout logic (clear session, navigate to login)
+                    // TODO: Implement logout logic
                 },
                 modifier = Modifier.fillMaxWidth(),
-                colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error)
+                colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error),
+                shape = RoundedCornerShape(12.dp)
             ) {
                 Icon(Icons.Default.ExitToApp, contentDescription = "Logout", tint = Color.White)
                 Spacer(Modifier.width(8.dp))
-                Text("Logout", color = Color.White)
+                Text("Logout", color = Color.White, fontWeight = FontWeight.Bold)
             }
         }
     }
@@ -337,8 +337,9 @@ fun SettingsScreen(
 fun SettingsGroupTitle(title: String) {
     Text(
         text = title,
-        style = MaterialTheme.typography.titleSmall,
+        style = MaterialTheme.typography.titleMedium, // Made it slightly larger
         color = MaterialTheme.colorScheme.primary,
+        fontWeight = FontWeight.Bold,
         modifier = Modifier.padding(top = 16.dp, bottom = 8.dp)
     )
 }
@@ -346,14 +347,15 @@ fun SettingsGroupTitle(title: String) {
 @Composable
 fun SettingsItem(icon: ImageVector, title: String, onClick: () -> Unit) {
     ListItem(
-        headlineContent = { Text(title) },
+        headlineContent = { Text(title, color = TextPrimary) },
         leadingContent = {
-            Icon(icon, contentDescription = title)
+            Icon(icon, contentDescription = title, tint = MaterialTheme.colorScheme.primary)
         },
         trailingContent = {
-            Icon(Icons.Default.ArrowForwardIos, contentDescription = "Navigate")
+            Icon(Icons.Default.ArrowForwardIos, contentDescription = "Navigate", tint = TextSecondary.copy(alpha = 0.7f))
         },
         modifier = Modifier.clickable(onClick = onClick)
+            .padding(vertical = 4.dp) // Add some vertical padding to list items
     )
 }
 
@@ -365,49 +367,44 @@ fun SettingsToggleItem(
     onCheckedChange: (Boolean) -> Unit
 ) {
     ListItem(
-        headlineContent = { Text(title) },
+        headlineContent = { Text(title, color = TextPrimary) },
         leadingContent = {
-            Icon(icon, contentDescription = title)
+            Icon(icon, contentDescription = title, tint = MaterialTheme.colorScheme.primary)
         },
         trailingContent = {
             Switch(checked = checked, onCheckedChange = onCheckedChange)
         },
-        modifier = Modifier.clickable { onCheckedChange(!checked) } // Allow clicking the whole row
+        modifier = Modifier.clickable { onCheckedChange(!checked) }.padding(vertical = 4.dp)
     )
 }
-
-
-val LightBlue = Color(0xFFF0F5FF)
-val TextGray = Color(0xFF7D8DAA)
 
 data class Transaction(
     val id: Int,
     val description: String,
     val amount: String,
     val date: String,
-    val type: String
+    val type: String // "Income" or "Expense"
 )
 
 @Composable
 fun ActualHomeScreenContent() {
-        LazyColumn(
-            modifier = Modifier
-                .fillMaxSize()
-                .background(Color(0xFFF9F9F9))
-                .padding(horizontal = 24.dp)
-        ) {
-            item { Spacer(modifier = Modifier.height(32.dp)) }
-            item { HeaderSection() }
-            item { Spacer(modifier = Modifier.height(24.dp)) }
-            item { BalanceCard() }
-            item { Spacer(modifier = Modifier.height(24.dp)) }
-            item { ActionButtons() }
-            item { Spacer(modifier = Modifier.height(32.dp)) }
-            item { RecentTransactions() }
-            item { Spacer(modifier = Modifier.height(16.dp)) }
-        }
+    LazyColumn(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(SurfaceLight) // Use the new SurfaceLight color
+            .padding(horizontal = 20.dp) // Adjusted padding
+    ) {
+        item { Spacer(modifier = Modifier.height(24.dp)) } // Reduced top space slightly
+        item { HeaderSection() }
+        item { Spacer(modifier = Modifier.height(20.dp)) }
+        item { BalanceCard() }
+        item { Spacer(modifier = Modifier.height(28.dp)) } // Increased space
+        item { ActionButtons() }
+        item { Spacer(modifier = Modifier.height(28.dp)) } // Increased space
+        item { RecentTransactions() }
+        item { Spacer(modifier = Modifier.height(20.dp)) }
     }
-
+}
 
 @Composable
 fun RecentTransactions() {
@@ -421,44 +418,54 @@ fun RecentTransactions() {
     Column {
         Text(
             text = "Recent Transactions",
-            style = MaterialTheme.typography.titleMedium,
-            fontWeight = FontWeight.Bold,
-            color = Color.Black,
+            style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.Bold), // Made it larger
+            color = TextPrimary,
             modifier = Modifier.padding(bottom = 16.dp)
         )
-        transactions.forEach {
-            TransactionItem(transaction = it)
-            Spacer(modifier = Modifier.height(16.dp))
+        transactions.forEach { transaction ->
+            TransactionItem(transaction = transaction)
+            Spacer(modifier = Modifier.height(12.dp)) // Space between transaction items
         }
     }
 }
 
 @Composable
 fun TransactionItem(transaction: Transaction) {
-    Row(
+    Card(
         modifier = Modifier.fillMaxWidth(),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.SpaceBetween
+        shape = RoundedCornerShape(12.dp),
+        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
+        colors = CardDefaults.cardColors(containerColor = Color.White)
     ) {
-        Column {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 16.dp, vertical = 12.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.SpaceBetween
+        ) {
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    text = transaction.description,
+                    style = MaterialTheme.typography.bodyLarge,
+                    fontWeight = FontWeight.Medium,
+                    color = TextPrimary,
+                )
+                Spacer(modifier = Modifier.height(2.dp))
+                Text(
+                    text = transaction.date,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = TextSecondary,
+                )
+            }
+            Spacer(modifier = Modifier.width(8.dp))
             Text(
-                text = transaction.description,
-                fontWeight = FontWeight.Medium,
-                color = Color.Black,
-                fontSize = 16.sp
-            )
-            Text(
-                text = transaction.date,
-                color = TextGray,
-                fontSize = 14.sp
+                text = transaction.amount,
+                style = MaterialTheme.typography.bodyLarge,
+                fontWeight = FontWeight.Bold,
+                color = if (transaction.type == "Income") IncomeGreen else ExpenseDark,
             )
         }
-        Text(
-            text = transaction.amount,
-            fontWeight = FontWeight.Bold,
-            color = if (transaction.type == "Income") Color(0xFF22C55E) else Color.Black,
-            fontSize = 16.sp
-        )
     }
 }
 
@@ -471,16 +478,18 @@ fun HeaderSection() {
         Column(modifier = Modifier.weight(1f)) {
             Text(
                 text = "Hi Dhanush!",
-                style = MaterialTheme.typography.headlineSmall,
+                style = MaterialTheme.typography.headlineMedium, // Adjusted style
                 fontWeight = FontWeight.Bold,
-                color = Color.Black
+                color = TextPrimary
             )
             Text(
                 text = "Thursday, 12 June 2025",
-                style = MaterialTheme.typography.bodyMedium,
-                color = TextGray
+                style = MaterialTheme.typography.bodyMedium, // Adjusted style
+                color = TextSecondary
             )
         }
+        // Potentially add an avatar/icon here if desired
+        // Icon(Icons.Default.AccountCircle, contentDescription = "Profile", modifier = Modifier.size(40.dp))
     }
 }
 
@@ -489,27 +498,33 @@ fun BottomNavigationBar(navController: NavHostController) {
     var selectedItem by remember { mutableIntStateOf(0) }
 
     NavigationBar(
-        containerColor = Color.White,
-        contentColor = MaterialTheme.colorScheme.primary
+        containerColor = Color.White, // Kept white for clean look
+        contentColor = MaterialTheme.colorScheme.primary,
+        tonalElevation = 8.dp // Add some elevation
     ) {
         bottomNavItems.forEachIndexed { index, screen ->
             NavigationBarItem(
                 icon = { Icon(screen.icon, contentDescription = screen.label) },
+                label = { Text(screen.label, style = MaterialTheme.typography.labelSmall) }, // Added label
                 selected = selectedItem == index,
                 onClick = {
-                    selectedItem = index
-                    navController.navigate(screen.route) {
-                        popUpTo(navController.graph.startDestinationId) {
-                            saveState = true
+                    if (selectedItem != index) { // Avoid re-navigating to the same screen
+                        selectedItem = index
+                        navController.navigate(screen.route) {
+                            popUpTo(navController.graph.startDestinationId) {
+                                saveState = true
+                            }
+                            launchSingleTop = true
+                            restoreState = true
                         }
-                        launchSingleTop = true
-                        restoreState = true
                     }
                 },
                 colors = NavigationBarItemDefaults.colors(
                     selectedIconColor = MaterialTheme.colorScheme.primary,
-                    unselectedIconColor = TextGray,
-                    indicatorColor = LightBlue
+                    selectedTextColor = MaterialTheme.colorScheme.primary, // Color for selected text
+                    unselectedIconColor = TextSecondary,
+                    unselectedTextColor = TextSecondary, // Color for unselected text
+                    indicatorColor = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.1f) // Softer indicator
                 )
             )
         }
@@ -519,22 +534,20 @@ fun BottomNavigationBar(navController: NavHostController) {
 @Composable
 fun BalanceCard() {
     Card(
-        shape = RoundedCornerShape(24.dp),
+        shape = RoundedCornerShape(20.dp), // Slightly adjusted shape
         modifier = Modifier.fillMaxWidth(),
-        elevation = CardDefaults.cardElevation(0.dp)
+        elevation = CardDefaults.cardElevation(defaultElevation = 8.dp) // More prominent shadow
     ) {
         Box(
             modifier = Modifier
                 .fillMaxWidth()
-                .height(200.dp)
+                .height(220.dp) // Slightly taller
+                .background( // Gradient background
+                    brush = Brush.linearGradient(
+                        colors = listOf(MaterialTheme.colorScheme.primary, PrimaryVariant)
+                    )
+                )
         ) {
-            Image(
-                painter = painterResource(id = R.drawable.ic_launcher_background),
-                contentDescription = "Card Background",
-                modifier = Modifier.fillMaxSize(),
-                contentScale = ContentScale.Crop
-            )
-
             Column(
                 modifier = Modifier
                     .fillMaxSize()
@@ -544,19 +557,21 @@ fun BalanceCard() {
                 Column {
                     Text(
                         text = "Available Balance",
-                        color = Color.White.copy(alpha = 0.8f),
-                        fontSize = 16.sp
+                        color = Color.White.copy(alpha = 0.9f),
+                        fontSize = 16.sp,
+                        style = MaterialTheme.typography.labelLarge // Using theme typography
                     )
                     Text(
                         text = "₹2,84,750",
                         color = Color.White,
-                        fontSize = 36.sp,
-                        fontWeight = FontWeight.Bold
+                        fontSize = 38.sp, // Slightly larger
+                        fontWeight = FontWeight.ExtraBold, // Bolder
+                        style = MaterialTheme.typography.displaySmall // Using theme typography
                     )
                 }
                 Row(
                     modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(16.dp)
+                    horizontalArrangement = Arrangement.spacedBy(12.dp) // Adjusted spacing
                 ) {
                     BalanceActionButton(
                         icon = Icons.Default.KeyboardArrowUp,
@@ -577,17 +592,24 @@ fun BalanceCard() {
 @Composable
 fun BalanceActionButton(icon: ImageVector, text: String, modifier: Modifier = Modifier) {
     Button(
-        onClick = {  },
-        modifier = modifier,
+        onClick = { /* TODO: Action */ },
+        modifier = modifier.height(48.dp), // Ensure a good touch target size
         shape = RoundedCornerShape(12.dp),
         colors = ButtonDefaults.buttonColors(
-            containerColor = Color.White.copy(alpha = 0.8f) // Fixed: Added closing parenthesis
-        )
-    ) { 
+            containerColor = Color.White.copy(alpha = 0.25f), // More subtle background
+            contentColor = Color.White // Ensure content (icon and text) is white
+        ),
+        elevation = ButtonDefaults.buttonElevation(defaultElevation = 0.dp, pressedElevation = 2.dp)
+    ) {
         Row(verticalAlignment = Alignment.CenterVertically) {
-            Icon(imageVector = icon, contentDescription = text, tint = MaterialTheme.colorScheme.primary)
+            Icon(imageVector = icon, contentDescription = text, tint = Color.White) // Explicitly tint icon
             Spacer(modifier = Modifier.width(8.dp))
-            Text(text = text, color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.SemiBold)
+            Text(
+                text = text,
+                color = Color.White, // Explicitly color text
+                fontWeight = FontWeight.SemiBold,
+                style = MaterialTheme.typography.bodyMedium
+            )
         }
     }
 }
@@ -596,28 +618,44 @@ fun BalanceActionButton(icon: ImageVector, text: String, modifier: Modifier = Mo
 fun ActionButtons() {
     Row(
         modifier = Modifier.fillMaxWidth(),
-        horizontalArrangement = Arrangement.SpaceAround
+        horizontalArrangement = Arrangement.SpaceAround // Keeps them spaced out
     ) {
-        ActionButton(icon = Icons.Default.AccountBox, text = "Accounts") // Example, replace with actual icons/text
-        ActionButton(icon = Icons.Default.Face, text = "Pay Bill")
+        // Updated icons to be more distinct if possible, or use your existing ones.
+        // These are examples.
+        ActionButton(icon = Icons.Default.AccountBox, text = "Accounts")
+        ActionButton(icon = Icons.Filled.Face, text = "Pay Bill") // Changed to Filled for consistency if others are
         ActionButton(icon = Icons.Default.FavoriteBorder, text = "Recharge")
-        ActionButton(icon = Icons.Default.Settings, text = "More")
+        ActionButton(icon = Icons.Default.Settings, text = "More") // Settings icon is fine for "More"
     }
 }
 
 @Composable
 fun ActionButton(icon: ImageVector, text: String) {
-    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+    Column(
+        horizontalAlignment = Alignment.CenterHorizontally,
+        modifier = Modifier.clickable(onClick = { /* TODO: Action for $text */ }) // Make the whole item clickable
+    ) {
         Box(
             modifier = Modifier
-                .size(64.dp)
-                .background(LightBlue, CircleShape)
+                .size(68.dp) // Slightly larger
+                .clip(CircleShape) // Ensure circle shape
+                .background(MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.2f)) // Softer background
                 .padding(16.dp),
             contentAlignment = Alignment.Center
         ) {
-            Icon(imageVector = icon, contentDescription = text, tint = MaterialTheme.colorScheme.primary)
+            Icon(
+                imageVector = icon,
+                contentDescription = text,
+                tint = MaterialTheme.colorScheme.primary, // Use primary color for icon tint
+                modifier = Modifier.size(28.dp) // Slightly larger icon
+            )
         }
         Spacer(modifier = Modifier.height(8.dp))
-        Text(text = text, fontSize = 14.sp, color = TextGray)
+        Text(
+            text = text,
+            fontSize = 13.sp, // Slightly smaller text for balance
+            color = TextSecondary,
+            style = MaterialTheme.typography.bodySmall
+        )
     }
 }
